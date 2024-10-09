@@ -1,0 +1,35 @@
+{
+  "StartAt": "RetrieveInputParameters",
+  "States": {
+    "RetrieveInputParameters": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:RetrieveInputParameters",
+      "Next": "WakeGalaxyCluster"
+    },
+    "WakeGalaxyCluster": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:WakeGalaxyCluster",
+      "Next": "SearchAndUpdateDataProducts"
+    },
+    "SearchAndUpdateDataProducts": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:SearchAndUpdateDataProducts",
+      "Next": "SyncGalaxyDataProducts"
+    },
+    "SyncGalaxyDataProducts": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:SyncGalaxyDataProducts",
+      "Next": "DeleteUnusedGalaxyDataProducts"
+    },
+    "DeleteUnusedGalaxyDataProducts": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:DeleteUnusedGalaxyDataProducts",
+      "Next": "UpdateRunTimestamp"
+    },
+    "UpdateRunTimestamp": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:UpdateRunTimestamp",
+      "End": true
+    }
+  }
+}

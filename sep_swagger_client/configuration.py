@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import copy
 import logging
-import multiprocessing
 import sys
 import urllib3
 
@@ -94,7 +93,7 @@ class Configuration(six.with_metaclass(TypeWithDefault, object)):
         # not the best value when you are making a lot of possibly parallel
         # requests to the same host, which is often the case here.
         # cpu_count * 5 is used as default value to increase performance.
-        self.connection_pool_maxsize = multiprocessing.cpu_count() * 5
+        self.connection_pool_maxsize = 1
 
         # Proxy URL
         self.proxy = None

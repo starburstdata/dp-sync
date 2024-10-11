@@ -1,55 +1,21 @@
-import sep_swagger_client
-from sep_swagger_client.models import DataProductSummary as SepDataProductSummary
-from sep_swagger_client.models import MaterializedViewDataset as SepMaterializedViewDataset
-from sep_swagger_client.models import DataProduct as SepDataProduct
-from SepAuthConfiguration import SepAuthConfiguration
+from starburstapi.sep.api import Api as SepApi
+from starburstapi.sep.data import DataProduct as SepDataProduct
+from starburstapi.sep.data import MaterializedView as SepMaterializedView
 
-import galaxy_swagger_client
-from galaxy_swagger_client.rest import ApiException as GalaxyApiException
-from GalaxyAuthConfiguration import GalaxyAuthConfiguration
+from starburstapi.galaxy.api import Api as GalaxyApi
+from starburstapi.galaxy.models import CreateDataProductRequest, Link
+
+from starburstapi.shared.api import ApiException
 
 from trino.dbapi import connect as trino_connect
 from trino.auth import BasicAuthentication
 
-from typing import cast, List
-from dataclasses import dataclass, asdict
-import datetime
 import json
-import requests
-
-
-@dataclass
-class Contact:
-    userId: str
-    email: str
-
-    def to_dict(self):
-        return asdict(self)
-
-
-@dataclass
-class Link:
-    name: str
-    uri: str
-
-    def to_dict(self):
-        return asdict(self)
-
-
-@dataclass
-class CreateDataProductRequestBody:
-    name: str
-    summary: str
-    description: str
-    catalogId: str
-    schemaName: str
-    contacts: List[dict]
-    links: List[dict]
-    defaultClusterId: str
 
 
 class SyncDataProducts:
-    def __init__(self, sep_host: str,
+    def __init__(self,
+                 sep_host: str,
                  sep_username: str,
                  sep_password: str,
                  galaxy_host: str,
@@ -59,67 +25,60 @@ class SyncDataProducts:
                  galaxy_sql_password: str,
                  galaxy_sql_cluster_url: str,
                  data_product_catalog: str,
-                 default_cluster: str):
-        sep_configuration = SepAuthConfiguration()
-        sep_configuration.host = sep_host
-        sep_configuration.username = sep_username
-        sep_configuration.password = sep_password
-        sep_api_client = sep_swagger_client.ApiClient(configuration=sep_configuration)
-        self.sep_api_instance = sep_swagger_client.DataProductsApi(api_client=sep_api_client)
+                 default_cluster: str,
+                 galaxy_api_key: str = None,
+                 data_product_catalog_id: str = None,
+                 default_cluster_id: str = None):
+
+        self.sep_api = SepApi(host=sep_host, username=sep_username, password=sep_password)
         self.sep_trino_connection = trino_connect(
             host=sep_host,
             port=443,
             user=sep_username,
             catalog='system',
+            http_scheme="https",
             auth=BasicAuthentication(sep_username, sep_password)
         )
+        self.galaxy_api = GalaxyApi(
+            host=galaxy_host,
+            client_id=galaxy_client_id,
+            client_secret=galaxy_client_secret,
+            username=galaxy_sql_username,
+            password=galaxy_sql_password,
+            cluster=default_cluster,
+            default_catalog=data_product_catalog
+        )
 
-        api_key_response = requests.post(url=f'{galaxy_host}/oauth/v2/token',
-                                         auth=(galaxy_client_id, galaxy_client_secret),
-                                         headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                                         data='grant_type=client_credentials')
-        self.galaxy_api_key = api_key_response.json()['access_token']
-        galaxy_configuration = GalaxyAuthConfiguration()
-        galaxy_configuration.api_key = {'accessToken': self.galaxy_api_key}
-        galaxy_configuration.host = galaxy_host
-        galaxy_api_client = galaxy_swagger_client.ApiClient(galaxy_configuration)
-        self.galaxy_host = galaxy_host
-        self.galaxy_data_product_api_instance = galaxy_swagger_client.DataProductServiceApi(galaxy_api_client)
-        self.galaxy_users_api_instance = galaxy_swagger_client.UserServiceApi(galaxy_api_client)
-
-        galaxy_catalog_api_client = galaxy_swagger_client.CatalogServiceApi(galaxy_api_client)
-        catalogs = galaxy_catalog_api_client.list_catalog().result
-        self.data_product_catalog_id = next(iter(
-            [catalog.catalog_id for catalog in catalogs if catalog.catalog_name == data_product_catalog]), None)
-        if self.data_product_catalog_id is None:
-            raise ValueError(f'Could not look up id for catalog {data_product_catalog}')
+        if data_product_catalog_id is None:
+            self.data_product_catalog_id = self.galaxy_api.get_catalog_id_for_name(data_product_catalog)
+            if self.data_product_catalog_id is None:
+                raise ValueError(f'Could not look up id for catalog {data_product_catalog}')
+        else:
+            self.data_product_catalog_id = data_product_catalog_id
         self.data_product_catalog = data_product_catalog
 
-        galaxy_cluster_api_client = galaxy_swagger_client.ClusterServiceApi(galaxy_api_client)
-        clusters = galaxy_cluster_api_client.list_cluster().result
+        self.galaxy_host = galaxy_host
 
-        self.default_cluster_id = next(iter(
-            [cluster.cluster_id for cluster in clusters if cluster.name == default_cluster]), None)
-        if self.default_cluster_id is None:
-            raise ValueError(f'Could not look up cluster id for {default_cluster}')
+        if default_cluster_id is None:
+            self.default_cluster_id = self.galaxy_api.get_cluster_by_name(default_cluster).clusterId
+            if self.default_cluster_id is None:
+                raise ValueError(f'Could not look up cluster id for {default_cluster}')
+        else:
+            self.default_cluster_id = default_cluster_id
 
         self.galaxy_trino_client_connection = trino_connect(
             host=galaxy_sql_cluster_url,
             port=443,
             user=galaxy_sql_username,
             catalog=data_product_catalog,
-            auth=BasicAuthentication(galaxy_sql_username, galaxy_sql_password)
+            auth=BasicAuthentication(galaxy_sql_username, galaxy_sql_password),
+            http_scheme="https"
         )
 
         self.galaxy_data_products = None
 
     def galaxy_get_data_product_by_name(self, name: str):
-        return next(iter([dp for dp in self.galaxy_list_data_products() if dp.name == name]))
-
-    def galaxy_list_data_products(self):
-        if self.galaxy_data_products is None:
-            self.galaxy_data_products = self.galaxy_data_product_api_instance.list_data_product().result
-        return self.galaxy_data_products
+        return self.galaxy_api.get_data_product_id_by_name(name)
 
     def galaxy_create_schema(self, schema: str):
         cursor = self.galaxy_trino_client_connection.cursor()
@@ -145,7 +104,7 @@ class SyncDataProducts:
 
     def galaxy_create_materialized_view_dataset(
             self,
-            sep_mv: SepMaterializedViewDataset,
+            sep_mv: SepMaterializedView,
             data_product_catalog_name: str,
             target_catalog_name: str,
             schema_name: str):
@@ -157,7 +116,7 @@ class SyncDataProducts:
         and storage_table IS NOT NULL
         """)
         query_results = execution.fetchall()
-        if len(query_results) == 0:
+        if len(query_results) == 0 or query_results == '..':
             print(f'''
             No storage table found for materialized view {data_product_catalog_name}.{schema_name}.{sep_mv.name}!
             Refresh the materialized view. If it is not populated after the next data product synchronization 
@@ -178,60 +137,64 @@ class SyncDataProducts:
             or_replace=True
         )
 
-    def __prepare_data_product_request__(self, sep_data_product: SepDataProduct):
-        users_list = self.galaxy_users_api_instance.list_user().result
-        emails = ([product_owner.email for product_owner in sep_data_product.product_owners or []] +
-                  [owner.email for owner in sep_data_product.owners or []])
-        contacts = [Contact(userId=user.user_id, email=user.email).to_dict()
-                    for user in users_list if user.email in emails]
-        return CreateDataProductRequestBody(
-            name=sep_data_product.name,
-            summary=sep_data_product.summary,
-            description=sep_data_product.description,
-            catalogId=self.data_product_catalog_id,
-            schemaName=sep_data_product.schema_name,
-            contacts= contacts,
-            links=[Link(link.label, link.uri).to_dict() for link in sep_data_product.relevant_links or []],
-            defaultClusterId=self.default_cluster_id
-        )
-
     def galaxy_sync_datasets(self, sep_data_product: SepDataProduct, replace_view_if_exists: bool = False):
         for view in sep_data_product.views:
             print(f'Updating view {view.name}')
             self.galaxy_create_view_dataset(
-                definition_query=view.definition_query,
+                definition_query=view.definitionQuery,
                 catalog_name=self.data_product_catalog,
-                schema_name=sep_data_product.schema_name,
+                schema_name=sep_data_product.schemaName,
                 view_name=view.name,
                 or_replace=replace_view_if_exists
             )
-        for mv in sep_data_product.materialized_views:
+        for mv in sep_data_product.materializedViews:
             # TODO: freshness check or something else to make sure the view has been populated?
             print(f'Updating materialized view {mv.name}')
             self.galaxy_create_materialized_view_dataset(
                 sep_mv=mv,
-                data_product_catalog_name=sep_data_product.catalog_name,
+                data_product_catalog_name=sep_data_product.catalogName,
                 target_catalog_name=self.data_product_catalog,
-                schema_name=sep_data_product.schema_name
+                schema_name=sep_data_product.schemaName
             )
 
     def galaxy_update_data_product(self, sep_data_product: SepDataProduct):
-        data_product_request_body = self.__prepare_data_product_request__(sep_data_product)
-        galaxy_data_product = self.galaxy_get_data_product_by_name(sep_data_product.name)
-        response = self.galaxy_data_product_api_instance.patch_update_data_product(
-            body=data_product_request_body.__dict__, data_product_id=galaxy_data_product.data_product_id)
+        emails = ([product_owner.email for product_owner in sep_data_product.productOwners or []] +
+                  [owner.email for owner in sep_data_product.owners or []])
+
+        create_data_product_request = CreateDataProductRequest(
+            name=sep_data_product.name,
+            summary=sep_data_product.summary,
+            description=sep_data_product.description,
+            catalogId=self.galaxy_api.get_default_catalog_id(),
+            schemaName=sep_data_product.schemaName,
+            contacts=self.galaxy_api.emails_to_users(emails),
+            links=[Link(uri=relevantLink.url, name=relevantLink.label)
+                   for relevantLink in sep_data_product.relevantLinks],
+            defaultClusterId=self.default_cluster_id
+        )
+        self.galaxy_api.update_data_product(create_data_product_request)
         self.galaxy_sync_datasets(sep_data_product=sep_data_product, replace_view_if_exists=True)
 
     def galaxy_create_data_product(self, sep_data_product: SepDataProduct):
-        self.galaxy_create_schema(sep_data_product.schema_name)
-        data_product_request_body = self.__prepare_data_product_request__(sep_data_product)
+        self.galaxy_create_schema(sep_data_product.schemaName)
         try:
-            # Galaxy APIs expect dicts, and transform them to json internally. A json string will result in an
-            # error with an inscrutable error message
-            response = self.galaxy_data_product_api_instance.create_data_product(
-                body=data_product_request_body.__dict__)
+            emails = ([product_owner.email for product_owner in sep_data_product.productOwners or []] +
+                      [owner.email for owner in sep_data_product.owners or []])
+
+            create_data_product_request = CreateDataProductRequest(
+                name=sep_data_product.name,
+                summary=sep_data_product.summary,
+                description=sep_data_product.description,
+                catalogId=self.galaxy_api.get_default_catalog_id(),
+                schemaName=sep_data_product.schemaName,
+                contacts=self.galaxy_api.emails_to_users(emails),
+                links=[Link(uri=relevantLink.url, name=relevantLink.label)
+                       for relevantLink in sep_data_product.relevantLinks],
+                defaultClusterId=self.default_cluster_id
+            )
+            self.galaxy_api.create_data_product(create_data_product_request)
             self.galaxy_sync_datasets(sep_data_product=sep_data_product, replace_view_if_exists=False)
-        except GalaxyApiException as e:
+        except ApiException as e:
             if e.reason.lower() == 'conflict' and json.loads(e.body)['status'] == 'ALREADY_EXISTS':
                 print(f'Data Product {sep_data_product.name} already exists. Updating.')
                 self.galaxy_update_data_product(sep_data_product)
@@ -239,9 +202,12 @@ class SyncDataProducts:
                 raise e
 
     def galaxy_delete_data_product(self, data_product_id: str):
-        self.galaxy_data_product_api_instance.delete_data_product(data_product_id=data_product_id)
+        self.galaxy_api.delete_data_product(data_product_id=data_product_id)
 
     def galaxy_wake_cluster(self):
         cursor = self.galaxy_trino_client_connection.cursor()
         result = cursor.execute("SELECT 'wake up - data product sync'")
         result.fetchall()
+
+    def galaxy_list_data_products(self):
+        return self.galaxy_api.list_data_products()

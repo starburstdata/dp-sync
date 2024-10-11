@@ -11,19 +11,21 @@ def lambda_handler(event, context):
     response = secrets_manager.get_secret_value(SecretId=secret_name)
     secret = json.loads(response['SecretString'])
 
+    #TODO - initialize sync class and pass to downstream states
+
     # Add retrieved parameters to the event for the next step
     event.update({
-        'sep_host': secret['sep_host'],
-        'sep_username': secret['sep_username'],
-        'sep_password': secret['sep_password'],
-        'galaxy_host': secret['galaxy_host'],
-        'galaxy_client_id': secret['galaxy_client_id'],
-        'galaxy_client_secret': secret['galaxy_client_secret'],
-        'galaxy_sql_username': secret['galaxy_sql_username'],
-        'galaxy_sql_password': secret['galaxy_sql_password'],
-        'galaxy_sql_cluster_url': secret['galaxy_sql_cluster_url'],
-        'data_product_catalog': secret['data_product_catalog'],
-        'default_cluster': secret['default_cluster']
+        'sep_host': secret['sep-host'],
+        'sep_username': secret['sep-username'],
+        'sep_password': secret['sep-password'],
+        'galaxy_host': secret['galaxy-host'],
+        'galaxy_client_id': secret['galaxy-client-id'],
+        'galaxy_client_secret': secret['galaxy-client-secret'],
+        'galaxy_sql_username': secret['galaxy-sql-username'],
+        'galaxy_sql_password': secret['galaxy-sql-password'],
+        'galaxy_sql_cluster_url': secret['galaxy-sql-cluster-url'],
+        'data_product_catalog': secret['data-product-catalog'],
+        'default_cluster': secret['default-cluster']
     })
 
     # Pass updated event to next Lambda

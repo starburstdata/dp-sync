@@ -3,32 +3,158 @@
   "States": {
     "RetrieveInputParameters": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:RetrieveInputParameters",
+      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:RetrieveInputParameters",
       "Next": "WakeGalaxyCluster"
     },
     "WakeGalaxyCluster": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:WakeGalaxyCluster",
-      "Next": "SearchAndUpdateDataProducts"
+      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:RetrieveInputParameters",
+      "Next": "GetDataProducts"
     },
-    "SearchAndUpdateDataProducts": {
+    "GetDataProducts": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:SearchAndUpdateDataProducts",
-      "Next": "SyncGalaxyDataProducts"
+      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:GetDataProducts",
+      "Next": "Parallel"
     },
-    "SyncGalaxyDataProducts": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:SyncGalaxyDataProducts",
-      "Next": "DeleteUnusedGalaxyDataProducts"
-    },
-    "DeleteUnusedGalaxyDataProducts": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:DeleteUnusedGalaxyDataProducts",
-      "Next": "UpdateRunTimestamp"
-    },
-    "UpdateRunTimestamp": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:UpdateRunTimestamp",
+    "Parallel": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "New",
+          "States": {
+            "New": {
+              "Type": "Pass",
+              "InputPath": "$.new",
+              "Next": "Map"
+            },
+            "Map": {
+              "Type": "Map",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "CreateDataProduct",
+                "States": {
+                  "CreateDataProduct": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "OutputPath": "$.Payload",
+                    "Parameters": {
+                      "Payload.$": "$",
+                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:CreateDataProduct:$LATEST"
+                    },
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 1,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "Modified",
+          "States": {
+            "Modified": {
+              "Type": "Pass",
+              "InputPath": "$.modified",
+              "Next": "Map (1)"
+            },
+            "Map (1)": {
+              "Type": "Map",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "UpdateDataProduct",
+                "States": {
+                  "UpdateDataProduct": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "OutputPath": "$.Payload",
+                    "Parameters": {
+                      "Payload.$": "$",
+                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:UpdateDataProduct:$LATEST"
+                    },
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 1,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "Unmodified",
+          "States": {
+            "Unmodified": {
+              "Type": "Pass",
+              "InputPath": "$.unmodified",
+              "Next": "Map (2)"
+            },
+            "Map (2)": {
+              "Type": "Map",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "RefreshDatasets",
+                "States": {
+                  "RefreshDatasets": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "OutputPath": "$.Payload",
+                    "Parameters": {
+                      "Payload.$": "$",
+                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:RefreshDatasets:$LATEST"
+                    },
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 1,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      ],
       "End": true
     }
   }

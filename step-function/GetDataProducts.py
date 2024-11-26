@@ -1,4 +1,4 @@
-from SyncDataProductsCustomApi import SyncDataProductsCustomApi
+from SyncDataProducts import SyncDataProducts
 import datetime
 import pickle
 from base64 import b64encode, b64decode
@@ -9,7 +9,7 @@ import boto3
 
 def lambda_handler(event, context):
     # Initialize SyncDataProducts
-    sync_data_products = SyncDataProductsCustomApi(
+    sync_data_products = SyncDataProducts(
         sep_host=event['sep_host'],
         sep_password=event['sep_password'],
         sep_username=event['sep_username'],
@@ -37,11 +37,14 @@ def lambda_handler(event, context):
     search_time = datetime.datetime.now(tz=datetime.UTC)
 
     # Search for data products
-    data_product_search_results = sync_data_products.sep_api.search_data_products()
+    data_product_search_results = cast(List[SepDataProductSearchResult],
+                                       sync_data_products.sep_api.search_data_products(event.get('search_string')))
     data_products = {
-        'new': [],  # {'event': event, 'data_product_ids':[]},
-        'modified': [],  # {'event': event, 'data_product_ids':[]},
-        'unmodified': []  # {'event': event, 'data_product_ids':[]}
+        'new': [],
+        'modified': [],
+        'unmodified': [],
+        'all_names': [],
+        'params': event
     }
 
     for data_product_summary in data_product_search_results:
@@ -54,6 +57,7 @@ def lambda_handler(event, context):
         else:
             data_products['unmodified'].append(
                 {'event': event, 'id': data_product_summary.id})
+        data_products['all_names'].append(data_product_summary.name)
 
     response = secrets_manager.put_secret_value(
         SecretId=secret_name,

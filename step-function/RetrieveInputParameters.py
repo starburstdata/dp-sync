@@ -11,8 +11,6 @@ def lambda_handler(event, context):
     response = secrets_manager.get_secret_value(SecretId=secret_name)
     secret = json.loads(response['SecretString'])
 
-    #TODO - initialize sync class and pass to downstream states
-
     # Add retrieved parameters to the event for the next step
     event.update({
         'sep_host': secret['sep-host'],
@@ -25,7 +23,9 @@ def lambda_handler(event, context):
         'galaxy_sql_password': secret['galaxy-sql-password'],
         'galaxy_sql_cluster_url': secret['galaxy-sql-cluster-url'],
         'data_product_catalog': secret['data-product-catalog'],
-        'default_cluster': secret['default-cluster']
+        'default_cluster': secret['default-cluster'],
+        'search_string': secret.get('search_string'),
+        'tag': secret.get('tag')
     })
 
     # Pass updated event to next Lambda

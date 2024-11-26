@@ -3,17 +3,17 @@
   "States": {
     "RetrieveInputParameters": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:RetrieveInputParameters",
+      "Resource": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:RetrieveInputParameters",
       "Next": "WakeGalaxyCluster"
     },
     "WakeGalaxyCluster": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:RetrieveInputParameters",
+      "Resource": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:RetrieveInputParameters",
       "Next": "GetDataProducts"
     },
     "GetDataProducts": {
       "Type": "Task",
-      "Resource": "arn:aws:lambda:us-east-2:562187740072:function:GetDataProducts",
+      "Resource": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:GetDataProducts",
       "Next": "Parallel"
     },
     "Parallel": {
@@ -41,7 +41,7 @@
                     "OutputPath": "$.Payload",
                     "Parameters": {
                       "Payload.$": "$",
-                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:CreateDataProduct:$LATEST"
+                      "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:CreateDataProduct:$LATEST"
                     },
                     "Retry": [
                       {
@@ -86,7 +86,7 @@
                     "OutputPath": "$.Payload",
                     "Parameters": {
                       "Payload.$": "$",
-                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:UpdateDataProduct:$LATEST"
+                      "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:UpdateDataProduct:$LATEST"
                     },
                     "Retry": [
                       {
@@ -131,7 +131,7 @@
                     "OutputPath": "$.Payload",
                     "Parameters": {
                       "Payload.$": "$",
-                      "FunctionName": "arn:aws:lambda:us-east-2:562187740072:function:RefreshDatasets:$LATEST"
+                      "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:RefreshDatasets:$LATEST"
                     },
                     "Retry": [
                       {
@@ -144,6 +144,71 @@
                         "IntervalSeconds": 1,
                         "MaxAttempts": 3,
                         "BackoffRate": 2
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "ListTaggedGalaxyDataProducts",
+          "States": {
+            "ListTaggedGalaxyDataProducts": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "OutputPath": "$.Payload",
+              "Parameters": {
+                "Payload.$": "$",
+                "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:ListTaggedGalaxyDataProducts:$LATEST"
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                    "Lambda.TooManyRequestsException"
+                  ],
+                  "IntervalSeconds": 1,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2,
+                  "JitterStrategy": "FULL"
+                }
+              ],
+              "Next": "Map (3)"
+            },
+            "Map (3)": {
+              "Type": "Map",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "DeleteDataProduct",
+                "States": {
+                  "DeleteDataProduct": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "OutputPath": "$.Payload",
+                    "Parameters": {
+                      "Payload.$": "$",
+                      "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT_NUMBER__:function:DeleteDataProduct:$LATEST"
+                    },
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 1,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
                       }
                     ],
                     "End": true

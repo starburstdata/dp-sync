@@ -1,11 +1,11 @@
-from SyncDataProductsCustomApi import SyncDataProductsCustomApi
+from SyncDataProducts import SyncDataProducts
 from typing import cast
 from starburstapi.sep.data import DataProduct as SepDataProduct
 
 
 def lambda_handler(event, context):
     # Initialize SyncDataProducts
-    sync_data_products = SyncDataProductsCustomApi(
+    sync_data_products = SyncDataProducts(
         sep_host=event['event']['sep_host'],
         sep_password=event['event']['sep_password'],
         sep_username=event['event']['sep_username'],
@@ -16,7 +16,8 @@ def lambda_handler(event, context):
         galaxy_sql_password=event['event']['galaxy_sql_password'],
         galaxy_sql_cluster_url=event['event']['galaxy_sql_cluster_url'],
         data_product_catalog=event['event']['data_product_catalog'],
-        default_cluster=event['event']['default_cluster']
+        default_cluster=event['event']['default_cluster'],
+        data_product_tag_name=event['event'].get('tag')
     )
 
     try:

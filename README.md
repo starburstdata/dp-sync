@@ -26,4 +26,5 @@ as they used for the Data Product
 You can `python runner.py <args>` from your local environment. 
 
 ## Run in AWS Step Function
-TODO
+This process can be deployed using AWS Step Functions. See [Step Function Documentation](./step-function/README.md) for
+details.

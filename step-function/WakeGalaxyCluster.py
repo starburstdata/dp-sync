@@ -1,7 +1,8 @@
 from SyncDataProducts import SyncDataProducts
 
+
 def lambda_handler(event, context):
-    #Initialize SyncDataProducts
+    # Initialize SyncDataProducts
     sync_data_products = SyncDataProducts(
         sep_host=event['sep_host'],
         sep_password=event['sep_password'],

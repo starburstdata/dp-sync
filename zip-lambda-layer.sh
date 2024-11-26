@@ -4,6 +4,9 @@ if [ $(basename "${PWD}") != "dp-sync" ]; then
   echo 'Must run from dp-sync directory'
   exit 1
 fi
+CONDA_ENV='/opt/homebrew/anaconda3/envs/tiaa-dp-sync'
+conda activate "${CONDA_ENV}"
+
 pip list --format=freeze | grep -v setuptools | grep -v pip | grep -v wheel > requirements.txt
 cd ..
 rm -rf python && cp -R dp-sync python && cd python

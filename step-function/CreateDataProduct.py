@@ -16,7 +16,8 @@ def lambda_handler(event, context):
         galaxy_sql_password=event['event']['galaxy_sql_password'],
         galaxy_sql_cluster_url=event['event']['galaxy_sql_cluster_url'],
         data_product_catalog=event['event']['data_product_catalog'],
-        default_cluster=event['event']['default_cluster']
+        default_cluster=event['event']['default_cluster'],
+        data_product_tag_name=event['event']['tag']
     )
 
     try:

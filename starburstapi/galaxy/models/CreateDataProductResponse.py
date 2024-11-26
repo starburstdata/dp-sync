@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
-from datetime import datetime
 from starburstapi.galaxy.models import Contact, Link
+from datetime import datetime
 from starburstapi.shared.models import JsonDataClass
 
 @dataclass
@@ -13,7 +13,7 @@ class DataProductCatalogDetails(JsonDataClass):
 
 
 @dataclass
-class DataProduct(JsonDataClass):
+class CreateDataProductResponse(JsonDataClass):
     syncToken: str
     dataProductId: str
     name: str

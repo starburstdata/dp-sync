@@ -1,11 +1,11 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import List
 from starburstapi.galaxy.models import Contact, Link
-import json
+from starburstapi.shared.models import JsonDataClass
 
 
 @dataclass
-class CreateDataProductRequest:
+class CreateDataProductRequest(JsonDataClass):
     name: str
     summary: str
     description: str
@@ -14,6 +14,3 @@ class CreateDataProductRequest:
     contacts: List[Contact]
     links: List[Link]
     defaultClusterId: str
-
-    def to_json(self):
-        return json.dumps(asdict(self))

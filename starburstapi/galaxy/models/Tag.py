@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from typing import Optional
 from starburstapi.shared.models import JsonDataClass
 
 @dataclass
-class Link(JsonDataClass):
+class Tag(JsonDataClass):
     name: str
-    uri: str
+    color: str
+    description: Optional[str]

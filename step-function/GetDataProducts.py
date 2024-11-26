@@ -4,7 +4,6 @@ import pickle
 from base64 import b64encode, b64decode
 from typing import cast, List
 from starburstapi.sep.data import DataProductSearchResult as SepDataProductSearchResult
-from starburstapi.sep.data import DataProduct as SepDataProduct
 import boto3
 
 
@@ -38,8 +37,7 @@ def lambda_handler(event, context):
     search_time = datetime.datetime.now(tz=datetime.UTC)
 
     # Search for data products
-    data_product_search_results = cast(List[SepDataProductSearchResult],
-                                       sync_data_products.sep_api.search_data_products())
+    data_product_search_results = sync_data_products.sep_api.search_data_products()
     data_products = {
         'new': [],  # {'event': event, 'data_product_ids':[]},
         'modified': [],  # {'event': event, 'data_product_ids':[]},

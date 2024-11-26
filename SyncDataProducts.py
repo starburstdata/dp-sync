@@ -4,6 +4,7 @@ from starburstapi.sep.data import MaterializedView as SepMaterializedView
 
 from starburstapi.galaxy.api import Api as GalaxyApi
 from starburstapi.galaxy.models import CreateDataProductRequest, Link
+from starburstapi.galaxy.models import DataProduct as GalaxyDataProduct
 
 from starburstapi.shared.api import ApiException
 
@@ -26,7 +27,7 @@ class SyncDataProducts:
                  galaxy_sql_cluster_url: str,
                  data_product_catalog: str,
                  default_cluster: str,
-                 galaxy_api_key: str = None,
+                 data_product_tag_name: str = 'dp_sync',
                  data_product_catalog_id: str = None,
                  default_cluster_id: str = None):
 
@@ -74,6 +75,8 @@ class SyncDataProducts:
             auth=BasicAuthentication(galaxy_sql_username, galaxy_sql_password),
             http_scheme="https"
         )
+        self.data_product_tag_name = data_product_tag_name
+        self.__SOURCE_CLUSTER_LINK_NAME__ = 'SourceCluster'
 
         self.galaxy_data_products = None
 
@@ -189,10 +192,15 @@ class SyncDataProducts:
                 schemaName=sep_data_product.schemaName,
                 contacts=self.galaxy_api.emails_to_users(emails),
                 links=[Link(uri=relevantLink.url, name=relevantLink.label)
-                       for relevantLink in sep_data_product.relevantLinks],
+                       for relevantLink in sep_data_product.relevantLinks] +
+                #  This link identifies the source cluster for this data product
+                [Link(uri=f'https://{self.sep_api.host}', name=f'{self.data_product_tag_name}/{self.__SOURCE_CLUSTER_LINK_NAME__}')],
                 defaultClusterId=self.default_cluster_id
             )
             self.galaxy_api.create_data_product(create_data_product_request)
+            tag = self.galaxy_api.get_tag_by_name(self.data_product_tag_name)
+            self.galaxy_api.tag_schema(tag.tagId, self.galaxy_api.get_default_catalog_id(), sep_data_product.schemaName)
+
             self.galaxy_sync_datasets(sep_data_product=sep_data_product, replace_view_if_exists=False)
         except ApiException as e:
             if e.reason.lower() == 'conflict' and json.loads(e.body)['status'] == 'ALREADY_EXISTS':
@@ -201,13 +209,18 @@ class SyncDataProducts:
             else:
                 raise e
 
-    def galaxy_delete_data_product(self, data_product_id: str):
-        self.galaxy_api.delete_data_product(data_product_id=data_product_id)
+    def galaxy_delete_data_product(self,data_product: GalaxyDataProduct):
+        self.galaxy_api.delete_data_product(data_product_id=data_product.dataProductId)
+        cursor = self.galaxy_trino_client_connection.cursor()
+        execution = cursor.execute(f'''
+                DROP SCHEMA IF EXISTS {data_product.catalog.catalogName}.{data_product.schemaName} CASCADE
+                ''')
+        result = execution.fetchall()
 
     def galaxy_wake_cluster(self):
         cursor = self.galaxy_trino_client_connection.cursor()
         result = cursor.execute("SELECT 'wake up - data product sync'")
         result.fetchall()
 
-    def galaxy_list_data_products(self):
-        return self.galaxy_api.list_data_products()
+    def galaxy_list_data_products(self, tag_name=None):
+        return self.galaxy_api.list_data_products(tag_name)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-
+from starburstapi.shared.models import JsonDataClass
 
 @dataclass
-class Catalog:
+class Catalog(JsonDataClass):
     catalogId: str
     catalogName: str

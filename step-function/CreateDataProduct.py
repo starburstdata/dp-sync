@@ -1,11 +1,11 @@
-from SyncDataProductsCustomApi import SyncDataProductsCustomApi
+from SyncDataProducts import SyncDataProducts
 from typing import cast
 from starburstapi.sep.data import DataProduct as SepDataProduct
 
 
 def lambda_handler(event, context):
     # Initialize SyncDataProducts
-    sync_data_products = SyncDataProductsCustomApi(
+    sync_data_products = SyncDataProducts(
         sep_host=event['event']['sep_host'],
         sep_password=event['event']['sep_password'],
         sep_username=event['event']['sep_username'],

@@ -1,14 +1,14 @@
-#needed for recursive class definitions
+# needed for recursive class definitions
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
-
+from starburstapi.shared.models import JsonDataClass
 
 @dataclass
-class Role:
-    syncToken: Optional
+class Role(JsonDataClass):
+    syncToken: Optional[str]
     userId: str
     email: str
     defaultRoleId: str

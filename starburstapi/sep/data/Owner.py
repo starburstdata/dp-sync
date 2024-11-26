@@ -3,6 +3,6 @@ from starburstapi.shared.models import JsonDataClass
 
 
 @dataclass
-class Contact(JsonDataClass):
-    userId: str
+class Owner(JsonDataClass):
+    name: str
     email: str

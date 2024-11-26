@@ -1,16 +1,17 @@
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
-from starburstapi.galaxy.models import Role
+from starburstapi.shared.models import JsonDataClass
 
 
 @dataclass
-class UserPrincipal:
+class UserPrincipal(JsonDataClass):
     id: str
     type: str
 
+
 @dataclass
-class UserRole:
+class UserRole(JsonDataClass):
     roleName: str
     roleId: str
     principal: UserPrincipal
@@ -18,7 +19,7 @@ class UserRole:
 
 
 @dataclass
-class User:
+class User(JsonDataClass):
     syncToken: str
     userId: str
     email: str

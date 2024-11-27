@@ -1,7 +1,7 @@
 from starburstapi.sep.data import DataProductSearchResult
 from starburstapi.sep.data import DataProduct
 import requests
-from typing import cast, List
+from typing import List
 from json import dumps
 
 
@@ -28,7 +28,7 @@ class Api:
             raise Exception(f'Request returned code {response.status_code}.\nResponse body: {response.text}')
 
         return [search_result for search_result in
-                [cast(DataProductSearchResult, DataProductSearchResult.load(result)) for result in response.json()]
+                [DataProductSearchResult.load(result) for result in response.json()]
                 if search_string is None or search_string in search_result.name]
 
     def get_data_product(self, dp_id) -> DataProduct:
@@ -36,4 +36,4 @@ class Api:
                                 auth=(self.username, self.password))
         if not response.ok:
             raise Exception('bad request' + str(response))
-        return cast(DataProduct, DataProduct.load(response.json()))
+        return DataProduct.load(response.json())

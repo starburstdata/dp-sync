@@ -1,1 +1,1 @@
-from .JsonDataClass import JsonDataClass
+from .JsonDataClass import JsonDataClass, PaginatedJsonDataClass

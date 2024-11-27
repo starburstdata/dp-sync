@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
-from starburstapi.shared.models import JsonDataClass
+from starburstapi.shared.models import PaginatedJsonDataClass
 
 @dataclass
-class Tag(JsonDataClass):
+class Tag(PaginatedJsonDataClass):
     name: str
     color: str
     description: Optional[str]

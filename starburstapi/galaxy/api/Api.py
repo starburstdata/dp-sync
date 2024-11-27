@@ -1,17 +1,9 @@
 import requests
-from typing import List, Any, cast, Type
+from typing import List, cast
 from starburstapi.galaxy.models import (CreateDataProductRequest, Cluster, User, Contact, Catalog, DataProduct, Tag,
                                         CreateDataProductResponse, TagIdentifier, TagResponse, SchemaMetadata)
-from dataclasses import dataclass
 from urllib.parse import quote_plus
 from starburstapi.shared.api import ApiException
-from starburstapi.shared.models import JsonDataClass
-
-
-@dataclass
-class PaginatedResponse(JsonDataClass):
-    nextPageToken: str
-    result: List[Any]
 
 
 class Api:
@@ -39,12 +31,12 @@ class Api:
         self.__default_catalog_id__: str = None
         self.__users_list__ = None
 
-    def get_default_catalog_id(self):
+    def get_default_catalog_id(self) -> str:
         if self.__default_catalog_id__ is None:
             self.__default_catalog_id__ = self.get_catalog_id_for_name(self.default_catalog)
         return self.__default_catalog_id__
 
-    def __get_api_key__(self, url: str, client_id: str, client_secret: str):
+    def __get_api_key__(self, url: str, client_id: str, client_secret: str) -> str:
         api_key_response = requests.post(url=f'{url}/oauth/v2/token',
                                          auth=(client_id, client_secret),
                                          headers={'Content-Type': 'application/x-www-form-urlencoded'},
@@ -110,11 +102,9 @@ class Api:
     def list_data_products(self, tag_name=None) -> List[DataProduct]:
         PATH = 'public/api/v1/dataProduct'
         if self.__data_products_list__ is None:
-            self.__data_products_list__ = cast(List[DataProduct], self.__get_paginated_response__(
+            self.__data_products_list__ = DataProduct.paginated_response_to_list(
                 f'{self.url}/{PATH}',
-                headers={'Authorization': f'bearer {self.api_key}'},
-                decoder_cls=DataProduct
-            ))
+                headers={'Authorization': f'bearer {self.api_key}'})
 
         if tag_name is not None:
             tagged_schema_names = [schema.schemaId for schema in
@@ -125,29 +115,23 @@ class Api:
 
     def get_schema_tags(self, catalog_id: str, schema_name: str) -> List[TagIdentifier]:
         PATH = f'public/api/v1/catalog/{catalog_id}/schema'
-        schema_metadata_response = cast(List[SchemaMetadata], self.__get_paginated_response__(
+        schema_metadata_response = SchemaMetadata.paginated_response_to_list(
             f'{self.url}/{PATH}',
-            headers={'Authorization': f'bearer {self.api_key}'},
-            decoder_cls=SchemaMetadata
-        ))
+            headers={'Authorization': f'bearer {self.api_key}'})
         return next(iter([schema.tags for schema in schema_metadata_response if schema.schemaId == schema_name]))
 
     def get_tagged_schemas(self, catalog_id: str, tag_name: str) -> List[SchemaMetadata]:
         PATH = f'public/api/v1/catalog/{catalog_id}/schema'
-        schema_metadata_response = cast(List[SchemaMetadata], self.__get_paginated_response__(
+        schema_metadata_response = SchemaMetadata.paginated_response_to_list(
             f'{self.url}/{PATH}',
-            headers={'Authorization': f'bearer {self.api_key}'},
-            decoder_cls=SchemaMetadata))
+            headers={'Authorization': f'bearer {self.api_key}'})
         return [schema for schema in schema_metadata_response if tag_name in [tag.name for tag in schema.tags]]
 
     def __list_catalogs__(self) -> List[Catalog]:
         PATH = 'public/api/v1/catalog'
-        catalog_response = self.__get_paginated_response__(
+        return Catalog.paginated_response_to_list(
             f'{self.url}/{PATH}',
-            headers={'Authorization': f'bearer {self.api_key}'},
-            decoder_cls=Catalog
-        )
-        return cast(List[Catalog], catalog_response)
+            headers={'Authorization': f'bearer {self.api_key}'})
 
     def get_catalog_id_for_name(self, name: str) -> str:
         catalogs = self.__list_catalogs__()
@@ -155,11 +139,9 @@ class Api:
 
     def __list_clusters__(self) -> List[Cluster]:
         PATH = 'public/api/v1/cluster'
-        clusters = self.__get_paginated_response__(
+        return Cluster.paginated_response_to_list(
             f'{self.url}/{PATH}',
-            headers={'Authorization': f'bearer {self.api_key}'},
-            decoder_cls=Cluster)
-        return cast(List[Cluster], clusters)
+            headers={'Authorization': f'bearer {self.api_key}'})
 
     def get_cluster_by_name(self, name: str) -> Cluster:
         encoded_name = f'name={quote_plus(name)}'
@@ -178,7 +160,7 @@ class Api:
                       headers={'Authorization': f'bearer {self.api_key}'},
                       data=tag.to_json())
 
-    def get_tag_by_name(self, tag_name: str):
+    def get_tag_by_name(self, tag_name: str) -> Tag:
         encoded_tag_name = f'name={quote_plus(tag_name)}'
         PATH = f'public/api/v1/tag/{encoded_tag_name}'
         return cast(Tag, TagResponse.load(requests.get(f'{self.url}/{PATH}',
@@ -193,42 +175,19 @@ class Api:
     def __list_users__(self) -> List[User]:
         PATH = 'public/api/v1/user'
         if self.__users_list__ is None:
-            self.__users_list__ = self.__get_paginated_response__(
+            self.__users_list__ = User.paginated_response_to_list(
                 f'{self.url}/{PATH}',
-                headers={'Authorization': f'bearer {self.api_key}'},
-                decoder_cls=User)
+                headers={'Authorization': f'bearer {self.api_key}'})
         return self.__users_list__
 
-    def emails_to_users(self, emails: List[str]):
+    def emails_to_users(self, emails: List[str]) -> List[Contact]:
         return [Contact(userId=user.userId, email=user.email)
                 for user in self.__list_users__() if user.email in emails]
 
-    def __get_user_by_email(self, email: str):
+    def __get_user_by_email(self, email: str) -> User:
         encoded_name = f'email={quote_plus(email)}'
 
         PATH = f'public/api/v1/user/{encoded_name}'
-        return cast(User, User.load(requests.get(f'{self.url}/{PATH}',
+        return User.load(requests.get(f'{self.url}/{PATH}',
                                                  headers={'Authorization': f'bearer {self.api_key}'}
-                                                 ).json()))
-
-    # def __get_paginated_response__(self, url: str, headers: {}):
-    #     response = requests.get(url=url, headers=headers)
-    #     paginated_response_schema = marshmallow_dataclass.class_schema(PaginatedResponse)()
-    #     paginated_response = cast(PaginatedResponse, paginated_response_schema.load(response.json()))
-    #     results = paginated_response.result
-    #     while paginated_response.nextPageToken is not None and paginated_response.nextPageToken.strip() != '':
-    #         response = requests.get(url=url, headers=headers, params={'pageToken': paginated_response.nextPageToken})
-    #         paginated_response = cast(PaginatedResponse, paginated_response_schema.load(response.json()))
-    #         results += paginated_response.result
-    #     return results
-
-    def __get_paginated_response__(self, url: str, headers: {}, decoder_cls: Type[JsonDataClass]) \
-            -> List[JsonDataClass]:
-        response = requests.get(url=url, headers=headers)
-        paginated_response = cast(PaginatedResponse, PaginatedResponse.load(response.json()))
-        results = [decoder_cls.load(r) for r in paginated_response.result]
-        while paginated_response.nextPageToken is not None and paginated_response.nextPageToken.strip() != '':
-            response = requests.get(url=url, headers=headers, params={'pageToken': paginated_response.nextPageToken})
-            paginated_response = cast(PaginatedResponse, PaginatedResponse.load(response.json()))
-            results += [decoder_cls.load(r) for r in paginated_response.result]
-        return results
+                                                 ).json())

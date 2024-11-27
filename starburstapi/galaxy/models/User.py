@@ -1,17 +1,17 @@
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
-from starburstapi.shared.models import JsonDataClass
+from starburstapi.shared.models import PaginatedJsonDataClass
 
 
 @dataclass
-class UserPrincipal(JsonDataClass):
+class UserPrincipal(PaginatedJsonDataClass):
     id: str
     type: str
 
 
 @dataclass
-class UserRole(JsonDataClass):
+class UserRole(PaginatedJsonDataClass):
     roleName: str
     roleId: str
     principal: UserPrincipal
@@ -19,7 +19,7 @@ class UserRole(JsonDataClass):
 
 
 @dataclass
-class User(JsonDataClass):
+class User(PaginatedJsonDataClass):
     syncToken: str
     userId: str
     email: str

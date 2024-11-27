@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import List
-from starburstapi.shared.models import JsonDataClass
+from starburstapi.shared.models import PaginatedJsonDataClass
 
 @dataclass
-class Cluster(JsonDataClass):
+class Cluster(PaginatedJsonDataClass):
     syncToken: str
     clusterId: str
     name: str

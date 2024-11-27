@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from typing import List
 from datetime import datetime
 from starburstapi.galaxy.models import Contact, Link
-from starburstapi.shared.models import JsonDataClass
+from starburstapi.shared.models import PaginatedJsonDataClass
 
 @dataclass
-class DataProductCatalogDetails(JsonDataClass):
+class DataProductCatalogDetails(PaginatedJsonDataClass):
     catalogId: str
     catalogName: str
     catalogKind: str
@@ -13,7 +13,7 @@ class DataProductCatalogDetails(JsonDataClass):
 
 
 @dataclass
-class DataProduct(JsonDataClass):
+class DataProduct(PaginatedJsonDataClass):
     syncToken: str
     dataProductId: str
     name: str

@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from typing import Optional
-from starburstapi.shared.models import JsonDataClass
+from starburstapi.shared.models import PaginatedJsonDataClass
+
 
 @dataclass
-class TagResponse(JsonDataClass):
+class TagResponse(PaginatedJsonDataClass):
     syncToken: str
     tagId: str
     name: str
